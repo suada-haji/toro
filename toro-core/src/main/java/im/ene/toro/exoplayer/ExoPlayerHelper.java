@@ -498,7 +498,7 @@ public final class ExoPlayerHelper {
     }
 
     @Override public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-
+      if (this.delegate != null) this.delegate.onShuffleModeEnabledChanged(shuffleModeEnabled);
     }
 
     @Override public void onPositionDiscontinuity(int reason) {
@@ -506,7 +506,7 @@ public final class ExoPlayerHelper {
     }
 
     @Override public void onSeekProcessed() {
-
+      if (this.delegate != null) this.delegate.onSeekProcessed();
     }
 
     @Override public void onRepeatModeChanged(int repeatMode) {
