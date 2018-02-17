@@ -17,19 +17,21 @@
 package toro.demo.exoplayer.basic
 
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.SimpleExoPlayerView
 import im.ene.toro.ToroPlayer
+import im.ene.toro.ToroPlayer.EventListener
 import im.ene.toro.ToroUtil.visibleAreaOffset
 import im.ene.toro.exoplayer.ExoPlayerViewHelper
-import im.ene.toro.exoplayer.Playable.DefaultEventListener
 import im.ene.toro.media.PlaybackInfo
 import im.ene.toro.widget.Container
 import org.jsoup.nodes.Element
 import toro.demo.exoplayer.DemoApp
 import toro.demo.exoplayer.R
+import java.util.concurrent.atomic.AtomicLong
 import java.util.regex.Pattern
 
 /**
@@ -42,12 +44,38 @@ internal class VideoViewHolder(inflater: LayoutInflater?, parent: ViewGroup?) :
     companion object {
         val regex = Pattern.compile("(\\d)+\\.(\\d+)")!!
         const val defaultRatio = 100 * 165.78F / 360F
+        const val TAG = "ToroExo:Basic"
     }
 
     private val playerFrame by lazy { itemView as AspectRatioFrameLayout }
     private val player = itemView.findViewById(R.id.player) as SimpleExoPlayerView
     private var helper: ExoPlayerViewHelper? = null
     private var videoUri: Uri? = null
+    private val timer = AtomicLong()
+
+    private val listener = object : EventListener {
+        override fun onBuffering() {
+            val now = System.currentTimeMillis()
+            val diff = now - timer.get()
+            timer.set(now)
+            Log.w(TAG, "onBuffering: " + diff)
+        }
+
+        override fun onPlaying() {
+            val now = System.currentTimeMillis()
+            val diff = now - timer.get()
+            timer.set(now)
+            Log.d(TAG, "onPlaying: " + diff)
+        }
+
+        override fun onPaused() {
+            Log.d(TAG, "onPaused")
+        }
+
+        override fun onCompleted() {
+            Log.d(TAG, "onCompleted")
+        }
+    }
 
     override fun bind(item: Any?) {
         super.bind(item)
@@ -67,16 +95,21 @@ internal class VideoViewHolder(inflater: LayoutInflater?, parent: ViewGroup?) :
     override fun getCurrentPlaybackInfo() = helper?.latestPlaybackInfo ?: PlaybackInfo()
 
     override fun initialize(container: Container, playbackInfo: PlaybackInfo?) {
-        if (helper === null) helper = ExoPlayerViewHelper(container, this,
-                videoUri!!, DefaultEventListener(), DemoApp.exoCreator!!)
+        if (helper === null) {
+            helper = ExoPlayerViewHelper(container, this, videoUri!!, DemoApp.exoCreator!!, null)
+            helper!!.addPlayerEventListener(listener)
+        }
+        timer.set(System.currentTimeMillis())
         helper!!.initialize(playbackInfo)
     }
 
     override fun play() {
+        Log.i(TAG, "Player#play()")
         helper!!.play()
     }
 
     override fun pause() {
+        Log.i(TAG, "Player#pause()")
         helper!!.pause()
     }
 
@@ -84,6 +117,7 @@ internal class VideoViewHolder(inflater: LayoutInflater?, parent: ViewGroup?) :
 
     override fun release() {
         helper?.release()
+        helper?.removePlayerEventListener(listener)
         helper = null
     }
 

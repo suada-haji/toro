@@ -20,12 +20,16 @@ import android.net.Uri
 import android.os.Bundle
 import android.support.design.widget.AppBarLayout.OnOffsetChangedListener
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import com.google.android.exoplayer2.Player
 import im.ene.toro.exoplayer.Playable
 import im.ene.toro.exoplayer.Playable.DefaultEventListener
 import kotlinx.android.synthetic.main.activity_single_player.app_bar
-import kotlinx.android.synthetic.main.activity_single_player.playerView
 import kotlinx.android.synthetic.main.activity_single_player.toolbar
+import kotlinx.android.synthetic.main.content_single_player.container1
+import kotlinx.android.synthetic.main.content_single_player.container2
+import kotlinx.android.synthetic.main.content_single_player.playerView
+import kotlinx.android.synthetic.main.content_single_player.playerView2
 import toro.demo.exoplayer.DemoApp
 import toro.demo.exoplayer.R
 
@@ -35,19 +39,21 @@ import toro.demo.exoplayer.R
 class PlayableDemoActivity : AppCompatActivity() {
 
     companion object {
+        private val TAG = "Toro:Demo"
         private val videoUri = Uri.parse("file:///android_asset/bbb/video.mp4")
     }
 
     private var playable: Playable? = null
     private val offsetChangeListener: OnOffsetChangedListener by lazy {
         OnOffsetChangedListener { app_bar, offset ->
-            val rate = ((app_bar.height + offset.toFloat()) / app_bar.height.toFloat())
-            if (rate < 0.75) playable!!.pause() else if (!playable!!.isPlaying) playable!!.play()
+            // val rate = ((app_bar.height + offset.toFloat()) / app_bar.height.toFloat())
+            // if (rate < 0.75) playable!!.pause() else if (!playable!!.isPlaying) playable!!.play()
         }
     }
 
     private val listener = object : DefaultEventListener() {
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+            Log.w(TAG, "Playing: $playWhenReady, State: $playbackState")
             val active = playbackState > Player.STATE_IDLE && playbackState < Player.STATE_ENDED
             playerView.keepScreenOn = active
         }
@@ -61,12 +67,23 @@ class PlayableDemoActivity : AppCompatActivity() {
         playable = DemoApp.exoCreator!!.createPlayable(videoUri)
         playable!!.addEventListener(listener)
         playable!!.prepare()
-        playable!!.attachView(playerView)
+
         app_bar.addOnOffsetChangedListener(offsetChangeListener)
+
+        container1.setOnLongClickListener {
+            playable?.attachView(playerView)
+            true
+        }
+
+        container2.setOnLongClickListener {
+            playable?.attachView(playerView2)
+            true
+        }
     }
 
     override fun onStart() {
         super.onStart()
+        playable!!.attachView(playerView)
         playable!!.play()
     }
 

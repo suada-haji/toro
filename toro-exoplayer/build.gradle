@@ -41,7 +41,11 @@ android {
 dependencies {
   // implementation fileTree(dir: 'libs', include: ['*.jar'])
   implementation project(':toro-core')
-  implementation ("com.google.android.exoplayer:exoplayer:${rootProject.ext.exoPlayer2Version}") {
+  // implementation ("com.google.android.exoplayer:exoplayer:${rootProject.ext.exoPlayer2Version}") {
+  //   exclude group: 'com.android.support'
+  // }
+
+  implementation ("com.github.eneim:ExoPlayer:nam~dev-v2-SNAPSHOT") {
     exclude group: 'com.android.support'
   }
 

@@ -14,4 +14,12 @@
   ~ limitations under the License.
   -->
 
-<manifest package="im.ene.toro.exoplayer"/>
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    package="im.ene.toro.exoplayer">
+
+  <uses-sdk
+      tools:overrideLibrary="com.google.android.exoplayer2.ext.gvr,
+      com.google.android.exoplayer2.ext.leanback,
+      com.google.vr.sdk.audio, com.google.vr.sdk.base"
+      />
+</manifest>

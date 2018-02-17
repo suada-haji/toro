@@ -20,31 +20,25 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.DefaultRenderersFactory;
-import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.LoadControl;
-import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MediaSourceEventListener;
-import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.text.Cue;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
-import com.google.android.exoplayer2.ui.SimpleExoPlayerView;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DataSpec;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
 import im.ene.toro.media.PlaybackInfo;
 import java.io.IOException;
-import java.util.List;
 
 import static im.ene.toro.ToroUtil.checkNotNull;
 import static im.ene.toro.exoplayer.ToroExo.toro;
@@ -181,32 +175,30 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
    */
   private static class PlayableImpl implements Playable {
 
-    private final PlaybackInfo playbackInfo = new PlaybackInfo(); // never expose to outside.
-    private final EventListeners listeners = new EventListeners();  // original listener.
+    final PlaybackInfo playbackInfo = new PlaybackInfo(); // never expose to outside.
+    final EventListeners listeners = new EventListeners();  // original listener.
 
-    private final Uri mediaUri; // immutable
-    private final ExoCreator creator; // cached
+    protected final Uri mediaUri; // immutable
+    protected final ExoCreator creator; // cached
 
-    private SimpleExoPlayer player; // on-demand, cached
-    private SimpleExoPlayerView playerView; // on-demand, not always required.
-    private ListenerWrapper listenerWrapper;  // proxy to wrap original listener.
-    private MediaSource mediaSource;  // on-demand
+    protected SimpleExoPlayer player; // on-demand, cached
+    protected PlayerView playerView; // on-demand, not always required.
+    protected MediaSource mediaSource;  // on-demand
+    private boolean listenerApplied = false;
 
-    PlayableImpl(ExoCreator creator, Uri uri) {
-      this.creator = creator;
-      this.mediaUri = uri;
+    public PlayableImpl(@NonNull ExoCreator creator, @NonNull Uri uri) {
+      this.creator = checkNotNull(creator);
+      this.mediaUri = checkNotNull(uri);
     }
 
     @Override public void prepare() {
-      if (player == null) {
-        player = requestPlayer(creator);
-      }
+      if (player == null) player = requestPlayer(creator);
 
-      if (listenerWrapper == null) {
-        listenerWrapper = new ListenerWrapper(listeners);
-        player.addListener(listenerWrapper);
-        player.addVideoListener(listenerWrapper);
-        player.addTextOutput(listenerWrapper);
+      if (!listenerApplied) {
+        player.addListener(listeners);
+        player.addVideoListener(listeners);
+        player.addTextOutput(listeners);
+        listenerApplied = true;
       }
 
       if (playerView != null && playerView.getPlayer() != player) playerView.setPlayer(player);
@@ -221,12 +213,17 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
       }
     }
 
-    @Override public void attachView(@NonNull SimpleExoPlayerView playerView) {
-      if (this.player == null) throw new IllegalStateException("Player is null, prepare it first.");
+    @Override public void attachView(@NonNull PlayerView playerView) {
       //noinspection ConstantConditions
-      if (playerView == null || this.playerView == playerView) return;
-      SimpleExoPlayerView.switchTargetView(this.player, this.playerView, playerView);
-      this.playerView = playerView;
+      if (playerView == null) throw new IllegalArgumentException("PlayerView is null.");
+      if (this.playerView == playerView) return;
+      if (this.player == null) {
+        this.playerView = playerView; // before the prepare.
+        this.prepare();
+      } else {
+        PlayerView.switchTargetView(this.player, this.playerView, playerView);
+        this.playerView = playerView; // after the switch.
+      }
     }
 
     @Override public void detachView() {
@@ -236,8 +233,12 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
       }
     }
 
-    @Override public SimpleExoPlayerView getPlayerView() {
+    @Override public PlayerView getPlayerView() {
       return this.playerView;
+    }
+
+    @Nullable @Override public SimpleExoPlayer getPlayer() {
+      return this.player;
     }
 
     @Override public void play() {
@@ -251,12 +252,13 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
     @Override public void reset() {
       this.playbackInfo.reset();
       if (player != null) {
+        player.stop(true);  // back to IDLE first.
         boolean haveResumePosition = this.playbackInfo.getResumeWindow() != INDEX_UNSET;
         if (haveResumePosition) {
           player.seekTo(this.playbackInfo.getResumeWindow(), this.playbackInfo.getResumePosition());
         }
         // re-prepare using new MediaSource instance.
-        // TODO [20180214] Maybe change this when ExoPlayer 2.7.0 is released.
+        // TODO [20180214] Maybe change this when ExoPlayer 2.7.0 is finally released.
         mediaSource = creator.createMediaSource(mediaUri);
         player.prepare(mediaSource, !haveResumePosition, false);
       }
@@ -265,15 +267,17 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
     @Override public void release() {
       if (this.playerView != null) detachView(); // detach view if need
       if (this.player != null) {
-        if (listenerWrapper != null) {
-          player.removeListener(listenerWrapper);
-          player.removeVideoListener(listenerWrapper);
-          player.removeTextOutput(listenerWrapper);
-          listenerWrapper = null;
+        this.player.stop(true);
+        if (listenerApplied) {
+          player.removeListener(listeners);
+          player.removeVideoListener(listeners);
+          player.removeTextOutput(listeners);
+          listenerApplied = false;
         }
         toro.getPool(creator).release(this.player);
-        this.player = null;
       }
+      this.player = null;
+      this.mediaSource = null;
     }
 
     @NonNull @Override public PlaybackInfo getPlaybackInfo() {
@@ -303,95 +307,28 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
     }
 
     @Override public void setVolume(float volume) {
-      if (player != null) player.setVolume(volume);
+      checkNotNull(player, "Playable#setVolume(): Player is null!").setVolume(volume);
     }
 
     @Override public float getVolume() {
-      return player != null ? player.getVolume() : 1;
+      return checkNotNull(player, "Playable#getVolume(): Player is null!").getVolume();
     }
 
     @Override public boolean isPlaying() {
       return player != null && player.getPlayWhenReady();
     }
 
-    void updatePlaybackInfo() {
+    private void updatePlaybackInfo() {
       if (player == null || player.getPlaybackState() == 1) return;
       playbackInfo.setResumeWindow(player.getCurrentWindowIndex());
       playbackInfo.setResumePosition(player.isCurrentWindowSeekable() ? //
           Math.max(0, player.getCurrentPosition()) : TIME_UNSET);
     }
-
-    @NonNull static SimpleExoPlayer requestPlayer(ExoCreator creator) {
-      //noinspection UnusedAssignment
-      SimpleExoPlayer player = toro.getPool(creator).acquire();
-      if (player == null) {
-        player = creator.createPlayer();
-      }
-
-      return player;
-    }
   }
 
-  private static class ListenerWrapper implements Playable.EventListener {
-
-    @NonNull final Playable.EventListener delegate;
-
-    ListenerWrapper(@NonNull Playable.EventListener delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override public void onVideoSizeChanged(int width, int height, int unAppliedRotationDegrees,
-        float pixelWidthHeightRatio) {
-      delegate.onVideoSizeChanged(width, height, unAppliedRotationDegrees, pixelWidthHeightRatio);
-    }
-
-    @Override public void onRenderedFirstFrame() {
-      delegate.onRenderedFirstFrame();
-    }
-
-    @Override public void onTimelineChanged(Timeline timeline, Object manifest) {
-      delegate.onTimelineChanged(timeline, manifest);
-    }
-
-    @Override
-    public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
-      delegate.onTracksChanged(trackGroups, trackSelections);
-    }
-
-    @Override public void onLoadingChanged(boolean isLoading) {
-      delegate.onLoadingChanged(isLoading);
-    }
-
-    @Override public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-      delegate.onPlayerStateChanged(playWhenReady, playbackState);
-    }
-
-    @Override public void onRepeatModeChanged(int repeatMode) {
-      delegate.onRepeatModeChanged(repeatMode);
-    }
-
-    @Override public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-      delegate.onShuffleModeEnabledChanged(shuffleModeEnabled);
-    }
-
-    @Override public void onPlayerError(ExoPlaybackException error) {
-      delegate.onPlayerError(error);
-    }
-
-    @Override public void onPositionDiscontinuity(int reason) {
-      delegate.onPositionDiscontinuity(reason);
-    }
-
-    @Override public void onPlaybackParametersChanged(PlaybackParameters playbackParameters) {
-      delegate.onPlaybackParametersChanged(playbackParameters);
-    }
-
-    @Override public void onSeekProcessed() {
-      delegate.onSeekProcessed();
-    }
-
-    @Override public void onCues(List<Cue> cues) {
-      delegate.onCues(cues);
-    }
+  @NonNull public static SimpleExoPlayer requestPlayer(ExoCreator creator) {
+    SimpleExoPlayer player = toro.getPool(creator).acquire();
+    if (player == null) player = creator.createPlayer();
+    return player;
   }
 }

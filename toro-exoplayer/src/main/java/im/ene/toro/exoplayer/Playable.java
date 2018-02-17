@@ -24,11 +24,14 @@ import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
+import com.google.android.exoplayer2.metadata.Metadata;
+import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.text.Cue;
 import com.google.android.exoplayer2.text.TextOutput;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
-import com.google.android.exoplayer2.ui.SimpleExoPlayerView;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.video.VideoListener;
 import im.ene.toro.media.PlaybackInfo;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,20 +50,25 @@ public interface Playable {
   void prepare();
 
   // Attach a new PlayerView to current Playable.
-  void attachView(@NonNull SimpleExoPlayerView playerView);
+  // This method should replace current available PlayerView with newer one.
+  // Note that switching Surface on Android 22- is considered unstable and error prone.
+  void attachView(@NonNull PlayerView playerView);
 
-  // Detach current SimpleExoPlayerView.
+  // Detach current SimpleExoPlayerView, simply remove current PlayerView and clear any relationship
+  // between it and the ExoPlayer instance.
   void detachView();
 
   // Return current attached SimpleExoPlayerView.
-  @Nullable SimpleExoPlayerView getPlayerView();
+  @Nullable PlayerView getPlayerView();
+
+  @Nullable SimpleExoPlayer getPlayer();
 
   void play();
 
   void pause();
 
-  // Reset all resource, so that the playback can start all over again.
-  void reset();
+  // Reset all resource, so that the playback can restart all over again.
+  @SuppressWarnings("unused") void reset();
 
   // Release all resource. After this, the Playable need to be prepared again to be usable.
   void release();
@@ -81,13 +89,14 @@ public interface Playable {
   @FloatRange(from = 0.0, to = 1.0) float getVolume();
 
   // Combine necessary interfaces.
-  interface EventListener extends Player.EventListener, SimpleExoPlayer.VideoListener, TextOutput {
+  interface EventListener extends Player.EventListener, VideoListener, TextOutput, MetadataOutput {
 
   }
 
   class DefaultEventListener implements EventListener {
 
-    @Override public void onTimelineChanged(Timeline timeline, Object manifest) {
+    @Override public void onTimelineChanged(Timeline timeline, Object manifest,
+        @Player.TimelineChangeReason int reason) {
 
     }
 
@@ -128,7 +137,7 @@ public interface Playable {
 
     }
 
-    @Override public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
+    @Override public void onVideoSizeChanged(int width, int height, int unAppliedRotationDegrees,
         float pixelWidthHeightRatio) {
 
     }
@@ -138,6 +147,10 @@ public interface Playable {
     }
 
     @Override public void onCues(List<Cue> cues) {
+
+    }
+
+    @Override public void onMetadata(Metadata metadata) {
 
     }
   }
@@ -162,9 +175,10 @@ public interface Playable {
       }
     }
 
-    @Override public void onTimelineChanged(Timeline timeline, Object manifest) {
+    @Override public void onTimelineChanged(Timeline timeline, Object manifest,
+        @Player.TimelineChangeReason int reason) {
       for (EventListener eventListener : this) {
-        eventListener.onTimelineChanged(timeline, manifest);
+        eventListener.onTimelineChanged(timeline, manifest, reason);
       }
     }
 
@@ -226,6 +240,12 @@ public interface Playable {
     @Override public void onCues(List<Cue> cues) {
       for (EventListener eventListener : this) {
         eventListener.onCues(cues);
+      }
+    }
+
+    @Override public void onMetadata(Metadata metadata) {
+      for (EventListener eventListener : this) {
+        eventListener.onMetadata(metadata);
       }
     }
   }

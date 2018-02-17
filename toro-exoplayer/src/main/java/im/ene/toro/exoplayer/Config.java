@@ -53,7 +53,7 @@ public final class Config {
   @Nullable final DrmSessionManager drmSessionManager;
   @Nullable final Cache cache; // null by default
 
-  Config(int extensionMode, @NonNull BaseMeter meter, @NonNull LoadControl loadControl,
+  private Config(int extensionMode, @NonNull BaseMeter meter, @NonNull LoadControl loadControl,
       @NonNull MediaSourceBuilder mediaSourceBuilder, @Nullable DrmSessionManager drmSessionManager,
       @Nullable Cache cache) {
     this.extensionMode = extensionMode;

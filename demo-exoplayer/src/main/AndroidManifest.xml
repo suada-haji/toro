@@ -20,6 +20,12 @@
 
   <uses-permission android:name="android.permission.INTERNET"/>
 
+  <uses-sdk
+      tools:overrideLibrary="com.google.android.exoplayer2.ext.gvr,
+      com.google.android.exoplayer2.ext.leanback,
+      com.google.vr.sdk.audio, com.google.vr.sdk.base"
+      />
+
   <application
       android:name=".DemoApp"
       android:allowBackup="false"
@@ -34,6 +40,11 @@
         android:label="@string/app_name"
         android:screenOrientation="portrait"
         android:theme="@style/AppTheme.NoActionBar">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
     </activity>
     <activity
         android:name=".playable.PlayableDemoActivity"
@@ -44,11 +55,6 @@
         android:name=".creator.CreatorDemoActivity"
         android:label="@string/title_activity_single_player"
         android:theme="@style/AppTheme.NoActionBar">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
     </activity>
   </application>
 
