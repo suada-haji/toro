@@ -26,6 +26,7 @@ import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.LoadControl;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -193,20 +194,17 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
 
     @Override public void prepare() {
       if (player == null) player = requestPlayer(creator);
-
       if (!listenerApplied) {
         player.addListener(listeners);
         player.addVideoListener(listeners);
         player.addTextOutput(listeners);
         listenerApplied = true;
       }
-
       if (playerView != null && playerView.getPlayer() != player) playerView.setPlayer(player);
       boolean haveResumePosition = playbackInfo.getResumeWindow() != C.INDEX_UNSET;
       if (haveResumePosition) {
         player.seekTo(playbackInfo.getResumeWindow(), playbackInfo.getResumePosition());
       }
-
       if (mediaSource == null) {
         mediaSource = creator.createMediaSource(mediaUri);
         player.prepare(mediaSource, !haveResumePosition, false);
@@ -252,32 +250,28 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
     @Override public void reset() {
       this.playbackInfo.reset();
       if (player != null) {
-        player.stop(true);  // back to IDLE first.
-        boolean haveResumePosition = this.playbackInfo.getResumeWindow() != INDEX_UNSET;
-        if (haveResumePosition) {
-          player.seekTo(this.playbackInfo.getResumeWindow(), this.playbackInfo.getResumePosition());
-        }
+        player.stop(true);  // back to IDLE first, reset positions and windows.
         // re-prepare using new MediaSource instance.
         // TODO [20180214] Maybe change this when ExoPlayer 2.7.0 is finally released.
         mediaSource = creator.createMediaSource(mediaUri);
-        player.prepare(mediaSource, !haveResumePosition, false);
+        player.prepare(mediaSource);
       }
     }
 
     @Override public void release() {
       if (this.playerView != null) detachView(); // detach view if need
-      if (this.player != null) {
-        this.player.stop(true);
+      if (player != null) {
+        player.stop(true);
         if (listenerApplied) {
           player.removeListener(listeners);
           player.removeVideoListener(listeners);
           player.removeTextOutput(listeners);
           listenerApplied = false;
         }
-        toro.getPool(creator).release(this.player);
+        toro.getPool(creator).release(player);
       }
-      this.player = null;
-      this.mediaSource = null;
+      player = null;
+      mediaSource = null;
     }
 
     @NonNull @Override public PlaybackInfo getPlaybackInfo() {
@@ -319,15 +313,18 @@ public class DefaultExoCreator implements ExoCreator, MediaSourceEventListener {
     }
 
     private void updatePlaybackInfo() {
-      if (player == null || player.getPlaybackState() == 1) return;
+      if (player == null || player.getPlaybackState() == Player.STATE_IDLE) return;
       playbackInfo.setResumeWindow(player.getCurrentWindowIndex());
       playbackInfo.setResumePosition(player.isCurrentWindowSeekable() ? //
           Math.max(0, player.getCurrentPosition()) : TIME_UNSET);
     }
   }
 
-  @NonNull public static SimpleExoPlayer requestPlayer(ExoCreator creator) {
-    SimpleExoPlayer player = toro.getPool(creator).acquire();
+  /**
+   * A helper method to help clients to request a {@link SimpleExoPlayer} instance.
+   */
+  @NonNull public static SimpleExoPlayer requestPlayer(@NonNull ExoCreator creator) {
+    SimpleExoPlayer player = toro.getPool(checkNotNull(creator)).acquire();
     if (player == null) player = creator.createPlayer();
     return player;
   }

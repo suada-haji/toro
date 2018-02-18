@@ -35,6 +35,6 @@ public interface ExoCreator {
 
   MediaSource createMediaSource(Uri uri);
 
-  // Client just needs this method to work with Toro, but I prepare both 2 above for custom use-cases.
+  // Client just needs this method to work with Toro. Other methods are optional.
   Playable createPlayable(Uri uri);
 }

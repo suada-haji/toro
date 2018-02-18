@@ -29,12 +29,11 @@ import im.ene.toro.widget.Container;
 import java.util.ArrayList;
 
 /**
- * @author eneim | 6/11/17.
+ * General interface for a helper class for a specific {@link ToroPlayer}. This class helps
+ * forwarding the playback state to the {@link ToroPlayer} if there is any
+ * {@link ToroPlayer.EventListener} registered. It also requests the initialization for the Player.
  *
- *         General interface for a helper class for a specific {@link ToroPlayer}. This class helps
- *         forwarding the playback state to the {@link ToroPlayer} if there is any
- *         {@link ToroPlayer.EventListener} registered. It also requests the initialization for the
- *         Player.
+ * @author eneim | 6/11/17.
  */
 public abstract class ToroPlayerHelper {
 
@@ -44,8 +43,8 @@ public abstract class ToroPlayerHelper {
       switch (msg.what) {
         case State.STATE_BUFFERING /* Player.STATE_BUFFERING */:
           internalListener.onBuffering();
-          for (ToroPlayer.EventListener callback : eventListeners) {
-            callback.onBuffering();
+          for (ToroPlayer.EventListener listener : eventListeners) {
+            listener.onBuffering();
           }
           break;
         case State.STATE_READY /*  Player.STATE_READY */:
@@ -55,18 +54,18 @@ public abstract class ToroPlayerHelper {
             internalListener.onPaused();
           }
 
-          for (ToroPlayer.EventListener callback : eventListeners) {
+          for (ToroPlayer.EventListener listener : eventListeners) {
             if (playWhenReady) {
-              callback.onPlaying();
+              listener.onPlaying();
             } else {
-              callback.onPaused();
+              listener.onPaused();
             }
           }
           break;
         case State.STATE_END /* Player.STATE_ENDED */:
           internalListener.onCompleted();
-          for (ToroPlayer.EventListener callback : eventListeners) {
-            callback.onCompleted();
+          for (ToroPlayer.EventListener listener : eventListeners) {
+            listener.onCompleted();
           }
           break;
         default:
@@ -145,13 +144,19 @@ public abstract class ToroPlayerHelper {
    * Get latest playback info. Either on-going playback info if current player is playing, or latest
    * playback info available if player is paused.
    *
+   * {@link Deprecated}, use {@link #getPlaybackInfo()} instead.
+   *
    * @return latest {@link PlaybackInfo} of current Player.
    */
-  @NonNull public abstract PlaybackInfo getLatestPlaybackInfo();
+  @Deprecated @NonNull public PlaybackInfo getLatestPlaybackInfo() {
+    return this.getPlaybackInfo();
+  }
+
+  @NonNull public abstract PlaybackInfo getPlaybackInfo();
 
   // Mimic ExoPlayer
-  @CallSuper protected final void onPlayerStateUpdated(boolean playWhenReady,
-      @State int playbackState) {
+  @CallSuper  //
+  protected final void onPlayerStateUpdated(boolean playWhenReady, @State int playbackState) {
     handler.obtainMessage(playbackState, playWhenReady).sendToTarget();
   }
 
@@ -160,6 +165,6 @@ public abstract class ToroPlayerHelper {
   }
 
   @Override public String toString() {
-    return "ToroPlayerHelper{" + "container=" + container + ", player=" + player + '}';
+    return "Helper{" + "container=" + container + ", player=" + player + '}';
   }
 }

@@ -19,7 +19,9 @@ package im.ene.toro;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.widget.VideoView;
 import im.ene.toro.media.PlaybackInfo;
 import im.ene.toro.widget.Container;
 import java.lang.annotation.Retention;
@@ -31,15 +33,27 @@ import java.lang.annotation.RetentionPolicy;
 
 public interface ToroPlayer {
 
+  /**
+   * Called by {@link Container} and other classes to make sure current {@link ToroPlayer} has a
+   * valid View used for playback. It can be {@link VideoView} or any non-Surface View, depends on
+   * Client's implementation.
+   *
+   * @return current valid {@link View} for the playback.
+   */
   @NonNull View getPlayerView();
 
+  /**
+   * Returns current {@link PlaybackInfo} of the playback.
+   *
+   * @return current {@link PlaybackInfo} of the playback.
+   */
   @NonNull PlaybackInfo getCurrentPlaybackInfo();
 
   /**
    * Initialize resource for the incoming playback. After this point, {@link ToroPlayer} should be
    * able to start the playback at anytime in the future (This doesn't mean that any call to {@link
-   * ToroPlayer#play()} will start the playback immediately. It can start buffering enough resource
-   * before any rendering).
+   * ToroPlayer#play()} will start the playback immediately. It may start buffering enough resource
+   * for rendering).
    *
    * @param container the RecyclerView contains this Player.
    * @param playbackInfo initialize info for the preparation.
@@ -59,7 +73,11 @@ public interface ToroPlayer {
   boolean isPlaying();
 
   /**
-   * Tear down all the setup. This should release all player instances.
+   * Called when the {@link RecyclerView.ViewHolder} is detached from the {@link Container}. This
+   * means that the {@link RecyclerView.ViewHolder} may still hold the data, but its {@link View}
+   * has been detached from the Window, and it is released to the Scrap heap.
+   *
+   * Client should tear down all the setup and release all playback setup.
    */
   void release();
 

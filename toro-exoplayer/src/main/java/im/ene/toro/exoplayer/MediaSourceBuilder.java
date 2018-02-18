@@ -75,9 +75,8 @@ public interface MediaSourceBuilder {
     public MediaSource buildMediaSource(Context context, Uri uri, Handler handler,
         DataSource.Factory manifestDataSourceFactory, DataSource.Factory mediaDataSourceFactory,
         MediaSourceEventListener listener) {
-      return new LoopingMediaSource(
-          DEFAULT.buildMediaSource(context, uri, handler, manifestDataSourceFactory,
-              mediaDataSourceFactory, listener));
+      return new LoopingMediaSource(DEFAULT.buildMediaSource(context, uri, handler, //
+          manifestDataSourceFactory, mediaDataSourceFactory, listener));
     }
   };
 }

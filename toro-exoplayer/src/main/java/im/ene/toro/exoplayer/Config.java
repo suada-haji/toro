@@ -38,9 +38,10 @@ import static im.ene.toro.ToroUtil.checkNotNull;
  * @since 3.4.0
  */
 
+@SuppressWarnings("WeakerAccess") //
 public final class Config {
 
-  // primitive flags
+  // Primitive flags
   @ExtensionRendererMode final int extensionMode;
 
   // NonNull options
@@ -49,11 +50,10 @@ public final class Config {
   @NonNull final MediaSourceBuilder mediaSourceBuilder;
 
   // Nullable options
-  @SuppressWarnings("WeakerAccess") //
-  @Nullable final DrmSessionManager drmSessionManager;
-  @Nullable final Cache cache; // null by default
+  @Nullable final DrmSessionManager drmSessionManager;  // Null by default
+  @Nullable final Cache cache; // Null by default
 
-  private Config(int extensionMode, @NonNull BaseMeter meter, @NonNull LoadControl loadControl,
+  Config(int extensionMode, @NonNull BaseMeter meter, @NonNull LoadControl loadControl,
       @NonNull MediaSourceBuilder mediaSourceBuilder, @Nullable DrmSessionManager drmSessionManager,
       @Nullable Cache cache) {
     this.extensionMode = extensionMode;
@@ -64,6 +64,7 @@ public final class Config {
     this.cache = cache;
   }
 
+  @SuppressWarnings("SimplifiableIfStatement")  //
   @Override public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -104,7 +105,7 @@ public final class Config {
 
   /// Builder
   @SuppressWarnings({ "unused", "WeakerAccess" }) //
-  public static class Builder {
+  public static final class Builder {
     @ExtensionRendererMode private int extensionMode = EXTENSION_RENDERER_MODE_OFF;
     private final DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
     @SuppressWarnings("unchecked")  //

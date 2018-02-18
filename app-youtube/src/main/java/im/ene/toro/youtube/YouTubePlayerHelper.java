@@ -24,7 +24,6 @@ import android.os.Message;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 import android.view.View;
 import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
@@ -106,7 +105,7 @@ final class YouTubePlayerHelper extends ToroPlayerHelper implements Handler.Call
     return youTubePlayer != null;
   }
 
-  @NonNull @Override public PlaybackInfo getLatestPlaybackInfo() {
+  @NonNull @Override public PlaybackInfo getPlaybackInfo() {
     updateResumePosition();
     return new PlaybackInfo(playbackInfo.getResumeWindow(), playbackInfo.getResumePosition());
   }
@@ -126,7 +125,6 @@ final class YouTubePlayerHelper extends ToroPlayerHelper implements Handler.Call
   }
 
   @Override public void release() {
-    Log.d(TAG, "release() called, " + player);
     handler.removeCallbacksAndMessages(null);
     // If the player is paused by Toro, youtubePlayer will be released before this call,
     // But in case the Fragment is released by System, "pause()" is not called yet, we use
@@ -140,7 +138,6 @@ final class YouTubePlayerHelper extends ToroPlayerHelper implements Handler.Call
   }
 
   @Override public boolean handleMessage(Message message) {
-    Log.i(TAG, "handleMessage: " + message.what + ", " + player.getPlayerOrder());
     switch (message.what) {
       case MSG_INIT:
         // Since this is Fragment transaction, it will be handled by the Adapter.
@@ -214,7 +211,6 @@ final class YouTubePlayerHelper extends ToroPlayerHelper implements Handler.Call
   class FullScreenListenerImpl implements YouTubePlayer.OnFullscreenListener {
 
     @Override public void onFullscreen(boolean fullscreen) {
-      Log.d(TAG, "onFullscreen() called with: fullscreen = [" + fullscreen + "], " + player);
       if (callback != null) {
         callback.onFullscreen(YouTubePlayerHelper.this, YouTubePlayerHelper.this.youTubePlayer,
             fullscreen);

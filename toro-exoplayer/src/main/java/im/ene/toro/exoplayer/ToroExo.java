@@ -32,23 +32,22 @@ import static im.ene.toro.exoplayer.BuildConfig.LIB_NAME;
 import static java.lang.Runtime.getRuntime;
 
 /**
+ * Global helper class to manage {@link ExoCreator} and {@link SimpleExoPlayer} instances. In this
+ * setup, {@link ExoCreator} and {@link SimpleExoPlayer} pools are cached. A {@link Config} is a key
+ * for each {@link ExoCreator}.
+ *
+ * ExoCreator creator = ToroExo.with(this).getDefaultCreator();
+ * SimpleExoPlayer player = creator.createPlayer();
+ * MediaSource source = creator.createMediaSource(videoUri);
+ * // TODO for client: do stuff with SimpleExoPlayer instance and MediaSource instance.
+ *
  * @author eneim (2018/01/26).
- *
- *         Global helper class to manage {@link ExoCreator} and {@link SimpleExoPlayer} instances.
- *
- *         In this setup, {@link ExoCreator} and SimpleExoPlayer pools are cached. A {@link Config}
- *         is a key for each {@link ExoCreator}.
- *
- *         ExoCreator creator = ToroExo.with(this).getDefaultCreator();
- *         SimpleExoPlayer player = creator.createPlayer();
- *         MediaSource source = creator.createMediaSource(videoUri);
- *         // next: do stuff with SimpleExoPlayer instance and MediaSource instance.
  */
 
 public final class ToroExo {
 
   @SuppressLint("StaticFieldLeak") static volatile ToroExo toro;
-  private static final int MAX_POOL_SIZE = Math.max(4, getRuntime().availableProcessors());
+  private static final int MAX_POOL_CAPACITY = Math.max(4, getRuntime().availableProcessors());
 
   public static ToroExo with(Context context) {
     if (toro == null) {
@@ -60,7 +59,9 @@ public final class ToroExo {
   }
 
   final String appName;
-  final Config defaultConfig = new Config.Builder().build();
+  final Config defaultConfig;
+  @SuppressWarnings("WeakerAccess") //
+  final ExoCreator defaultCreator;
 
   @NonNull private final Context context;  // Application context
   @NonNull private final Map<Config, ExoCreator> creators;
@@ -71,6 +72,8 @@ public final class ToroExo {
     this.appName = getUserAgent(context.getApplicationContext(), LIB_NAME);
     this.playerPools = new HashMap<>();
     this.creators = new HashMap<>();
+    this.defaultConfig = new Config.Builder().build();
+    this.defaultCreator = new DefaultExoCreator(this.context, this.defaultConfig);
 
     // Adapt from ExoPlayer demo app. Start this on demand.
     CookieManager cookieManager = new CookieManager();
@@ -91,7 +94,7 @@ public final class ToroExo {
   }
 
   public ExoCreator getDefaultCreator() {
-    return getCreator(defaultConfig);
+    return this.defaultCreator;
   }
 
   // Release and clear all current cached ExoPlayer instances. This should be called when
@@ -106,10 +109,10 @@ public final class ToroExo {
   }
 
   /// internal APIs
-  Pools.Pool<SimpleExoPlayer> getPool(ExoCreator creator) {
+  Pools.Pool<SimpleExoPlayer> getPool(@NonNull ExoCreator creator) {
     Pools.Pool<SimpleExoPlayer> pool = playerPools.get(creator);
     if (pool == null) {
-      pool = new Pools.SimplePool<>(MAX_POOL_SIZE);
+      pool = new Pools.SimplePool<>(MAX_POOL_CAPACITY);
       playerPools.put(creator, pool);
     }
 

@@ -19,8 +19,6 @@ package im.ene.toro.exoplayer;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
-import com.google.android.exoplayer2.metadata.Metadata;
 import com.google.android.exoplayer2.ui.PlayerView;
 import im.ene.toro.ToroPlayer;
 import im.ene.toro.exoplayer.Playable.EventListener;
@@ -31,10 +29,8 @@ import im.ene.toro.widget.Container;
 /**
  * @author eneim (2018/01/24).
  */
-
 public class ExoPlayerViewHelper extends ToroPlayerHelper {
 
-  @SuppressWarnings("unused") static final String TAG = "ToroExo:Helper";
   @NonNull private final Playable playable;
   @NonNull private final MyEventListeners listeners;
 
@@ -94,7 +90,7 @@ public class ExoPlayerViewHelper extends ToroPlayerHelper {
     return playable.getVolume();
   }
 
-  @NonNull @Override public PlaybackInfo getLatestPlaybackInfo() {
+  @NonNull @Override public PlaybackInfo getPlaybackInfo() {
     return playable.getPlaybackInfo();
   }
 
@@ -115,18 +111,8 @@ public class ExoPlayerViewHelper extends ToroPlayerHelper {
     MyEventListeners() {
     }
 
-    @Override public void onMetadata(Metadata metadata) {
-      super.onMetadata(metadata);
-      Log.d(TAG, "onMetadata() called with: metadata = [" + metadata + "]");
-    }
-
     @Override public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
       ExoPlayerViewHelper.super.onPlayerStateUpdated(playWhenReady, playbackState); // important
-      Log.d(TAG, "onPlayerStateChanged() called with: playWhenReady = ["
-          + playWhenReady
-          + "], playbackState = ["
-          + playbackState
-          + "]");
       super.onPlayerStateChanged(playWhenReady, playbackState);
     }
   }
